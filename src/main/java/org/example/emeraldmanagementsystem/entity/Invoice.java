@@ -43,10 +43,10 @@ public class Invoice extends BaseEntity {
     private String serviceTierName;
 
     @Column(name = "total_amount")
-    private int totalAmount;
+    private Long totalAmount;
 
     @Column(name = "paid_amount")
-    private int paidAmount = 0;
+    private Long paidAmount = 0L;
 
     @Column(name = "due_date")
     private LocalDate dueDate;

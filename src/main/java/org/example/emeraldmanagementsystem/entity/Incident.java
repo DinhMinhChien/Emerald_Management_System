@@ -9,7 +9,7 @@ import org.example.emeraldmanagementsystem.common.IncidentStatus;
 import org.example.emeraldmanagementsystem.common.LocationEnum;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Setter
@@ -47,6 +47,6 @@ public class Incident extends BaseEntity{
     private String assigneeName ;
 
     @Column(name = "closed_at")
-    private LocalDate closedAt ;
+    private LocalDateTime closedAt ;
 
 }
