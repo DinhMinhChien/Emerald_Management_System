@@ -43,13 +43,4 @@ public class Resident extends BaseEntity{
     @Column(name = "national_id")
     private String nationalId;
 
-    @Column(name = "keycloak_id")
-    private String keycloakId;
-
-    @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
-
-    @Column(name = "must_change_password", nullable = false)
-    private Boolean mustChangePassword = true;
-
 }
