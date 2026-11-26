@@ -1,0 +1,52 @@
+package org.example.emeraldmanagementsystem.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.example.emeraldmanagementsystem.common.IncidentStatus;
+import org.example.emeraldmanagementsystem.common.LocationEnum;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.time.LocalDate;
+
+@Entity
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "incidents")
+public class Incident extends BaseEntity{
+    @Id
+    @UuidGenerator
+    @Column(name = "id")
+    private String id ;
+
+    @Column(name = "apartment_id")
+    private String apartmentId ;
+
+    @Column(name = "reported_by")
+    private String reportedBy ;
+
+    @Column(name = "title")
+    private String title ;
+
+    @Column(name = "description")
+    private String description ;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location")
+    private LocationEnum location ;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private IncidentStatus status ;
+
+    @Column(name = "assignee_name")
+    private String assigneeName ;
+
+    @Column(name = "closed_at")
+    private LocalDate closedAt ;
+
+}

@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: emerald-management-system
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9999/realms/EMERALD-AUTHENTICATION
+          jwk-set-uri: http://localhost:9999/realms/EMERALD-AUTHENTICATION/protocol/openid-connect/certs
+keycloak:
+  auth-server-url: http://localhost:9998
+  realm: EMERALD-AUTHENTICATION
+  resource: auth-user
+  credentials:
+    secret: 'KQb0Wv7MWo5HddFlMu7qCizuEkq90nxh'
+server:
+  port: 3333
