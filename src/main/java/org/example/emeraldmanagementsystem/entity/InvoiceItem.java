@@ -37,8 +37,8 @@ public class InvoiceItem extends BaseEntity {
     private int quantity ;
 
     @Column(name = "unit_amount")
-    private long unitAmount ;
+    private Long unitAmount ;
 
     @Column(name = "amount")
-    private long amount ;
+    private Long amount ;
 }

@@ -29,6 +29,13 @@ public class Incident extends BaseEntity{
     @Column(name = "reported_by")
     private String reportedBy ;
 
+    @Column(name = "reporter_name")
+    private String reporterName ;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel")
+    private IncidentStatus channel ;
+
     @Column(name = "title")
     private String title ;
 
@@ -39,6 +46,9 @@ public class Incident extends BaseEntity{
     @Column(name = "location")
     private LocationEnum location ;
 
+    @Column(name = "common_area")
+    private String commonArea ;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private IncidentStatus status ;
@@ -48,5 +58,11 @@ public class Incident extends BaseEntity{
 
     @Column(name = "closed_at")
     private LocalDateTime closedAt ;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt ;
+
+    @Column(name = "cancel_reason")
+    private LocalDateTime cancelReason ;
 
 }

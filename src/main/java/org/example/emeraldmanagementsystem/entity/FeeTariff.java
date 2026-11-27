@@ -37,7 +37,7 @@ public class FeeTariff extends BaseEntity{
     private BigDecimal maxAreaM2 ;
 
     @Column(name = "amount")
-    private long amount ;
+    private Long amount ;
 
     @Column(name = "effective_from")
     private LocalDate effectiveFrom ;

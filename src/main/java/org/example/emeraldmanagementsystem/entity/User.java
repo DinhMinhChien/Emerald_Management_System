@@ -34,7 +34,7 @@ public class User extends BaseEntity{
     private String fullName ;
 
     @Column(name = "must_change_password")
-    private boolean mustChangePassword ;
+    private boolean mustChangePassword = true ;
 
     @Column(name = "status")
     private String status ;

@@ -6,10 +6,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.emeraldmanagementsystem.common.InvoiceStatus;
+import org.example.emeraldmanagementsystem.common.VoidReason;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "invoices")
@@ -45,13 +47,32 @@ public class Invoice extends BaseEntity {
     @Column(name = "total_amount")
     private Long totalAmount;
 
-    @Column(name = "paid_amount")
-    private Long paidAmount = 0L;
-
     @Column(name = "due_date")
     private LocalDate dueDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private InvoiceStatus status;
+
+    @Column(name = "paid_on")
+    private LocalDate paidOn ;
+
+    @Column(name = "paid_note")
+    private String paidNote ;
+
+    @Column(name = "received_by")
+    private String receivedBy ;
+
+    @Column(name = "voided_at")
+    private LocalDateTime voidedAt ;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "void_reason")
+    private VoidReason voidReason ;
+
+    @Column(name = "void_note")
+    private String voidNote ;
+
+    @Column(name = "active_apartment_id", length = 36, insertable = false, updatable = false)
+    private String activeApartmentId;
 }

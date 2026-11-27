@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.IncidentEventStatus;
+import org.example.emeraldmanagementsystem.common.IncidentStatus;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
@@ -25,7 +25,7 @@ public class IncidentEvent extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private IncidentEventStatus status ;
+    private IncidentStatus status ;
 
     @Column(name = "assignee_name")
     private String assigneeName ;

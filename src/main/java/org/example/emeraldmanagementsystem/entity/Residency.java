@@ -8,7 +8,6 @@ import lombok.Setter;
 import org.example.emeraldmanagementsystem.common.ResidencyEndReason;
 import org.example.emeraldmanagementsystem.common.ResidencyRelation;
 import org.example.emeraldmanagementsystem.common.ResidencyRole;
-import org.example.emeraldmanagementsystem.common.ResidencyTenure;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
@@ -38,10 +37,6 @@ public class Residency extends BaseEntity{
     @Enumerated(EnumType.STRING)
     @Column(name = "relation")
     private ResidencyRelation relation;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tenure")
-    private ResidencyTenure tenure;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
