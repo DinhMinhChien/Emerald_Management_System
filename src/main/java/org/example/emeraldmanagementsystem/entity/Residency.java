@@ -5,9 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.ResidencyEndReason;
-import org.example.emeraldmanagementsystem.common.ResidencyRelation;
-import org.example.emeraldmanagementsystem.common.ResidencyRole;
+import org.example.emeraldmanagementsystem.common.enums.ResidencyEndReason;
+import org.example.emeraldmanagementsystem.common.enums.ResidencyRelation;
+import org.example.emeraldmanagementsystem.common.enums.ResidencyRole;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;

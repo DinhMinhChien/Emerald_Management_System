@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.FeeType;
+import org.example.emeraldmanagementsystem.common.enums.FeeType;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity

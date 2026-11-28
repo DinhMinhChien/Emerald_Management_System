@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.IncidentStatus;
+import org.example.emeraldmanagementsystem.common.enums.IncidentStatus;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity

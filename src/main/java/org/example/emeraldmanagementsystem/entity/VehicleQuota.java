@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.VehicleType;
+import org.example.emeraldmanagementsystem.common.enums.VehicleType;
 
 @Entity
 @Table(name = "vehicle_quotas")

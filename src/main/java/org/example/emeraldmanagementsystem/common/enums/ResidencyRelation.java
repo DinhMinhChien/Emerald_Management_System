@@ -1,4 +1,4 @@
-package org.example.emeraldmanagementsystem.common;
+package org.example.emeraldmanagementsystem.common.enums;
 
 public enum ResidencyRelation {
     SPOUSE,

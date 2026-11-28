@@ -5,8 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.VehicleStatus;
-import org.example.emeraldmanagementsystem.common.VehicleType;
+import org.example.emeraldmanagementsystem.common.enums.VehicleStatus;
+import org.example.emeraldmanagementsystem.common.enums.VehicleType;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;

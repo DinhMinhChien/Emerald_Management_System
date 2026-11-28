@@ -5,8 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.InvoiceStatus;
-import org.example.emeraldmanagementsystem.common.VoidReason;
+import org.example.emeraldmanagementsystem.common.enums.InvoiceStatus;
+import org.example.emeraldmanagementsystem.common.enums.VoidReason;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;

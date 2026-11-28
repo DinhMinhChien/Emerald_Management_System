@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.ApartmentStatus;
+import org.example.emeraldmanagementsystem.common.enums.ApartmentStatus;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;

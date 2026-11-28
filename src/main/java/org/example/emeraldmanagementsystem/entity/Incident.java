@@ -5,8 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.emeraldmanagementsystem.common.IncidentStatus;
-import org.example.emeraldmanagementsystem.common.LocationEnum;
+import org.example.emeraldmanagementsystem.common.enums.IncidentCancelReason;
+import org.example.emeraldmanagementsystem.common.enums.IncidentChannel;
+import org.example.emeraldmanagementsystem.common.enums.IncidentStatus;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
@@ -34,7 +35,7 @@ public class Incident extends BaseEntity{
 
     @Enumerated(EnumType.STRING)
     @Column(name = "channel")
-    private IncidentStatus channel ;
+    private IncidentChannel channel ;
 
     @Column(name = "title")
     private String title ;
@@ -42,12 +43,9 @@ public class Incident extends BaseEntity{
     @Column(name = "description")
     private String description ;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "location")
-    private LocationEnum location ;
 
-    @Column(name = "common_area")
-    private String commonArea ;
+    @Column(name = "area")
+    private String area ;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
@@ -62,7 +60,8 @@ public class Incident extends BaseEntity{
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt ;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "cancel_reason")
-    private LocalDateTime cancelReason ;
+    private IncidentCancelReason cancelReason ;
 
 }
