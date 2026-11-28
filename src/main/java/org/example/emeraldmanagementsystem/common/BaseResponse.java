@@ -33,6 +33,14 @@ public class BaseResponse<T> {
         return response;
     }
 
+    public static <T> BaseResponse<T> ofCreated(T data, String message) {
+        BaseResponse<T> response = new BaseResponse<>();
+        response.data = data;
+        response.meta.code = HttpStatus.CREATED.value();
+        response.meta.message = message;
+        return response;
+    }
+
     public static <T> BaseResponse<List<T>> ofSuccess(Page<T> page) {
         BaseResponse<List<T>> response = new BaseResponse<>();
         response.data = page.getContent();
