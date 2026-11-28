@@ -11,4 +11,5 @@ public interface BillingPeriodRepository extends JpaRepository<BillingPeriod, St
     Optional<BillingPeriod> findFirstByDeletedFalseOrderByYearDescMonthDesc();
     List<BillingPeriod> findAllByDeletedFalseOrderByYearAscMonthAsc();
     boolean existsByDeletedFalseAndYearAndMonth(int year, int month);
+    Optional<BillingPeriod> findByIdAndDeletedFalse(String id);
 }

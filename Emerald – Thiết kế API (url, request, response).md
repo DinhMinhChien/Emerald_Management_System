@@ -1235,7 +1235,7 @@ Quy tắc:
 
 ### 10.4 POST /manager/incidents
 
-Màn hình: **Sự cố – BQL tạo thay cư dân** (nút Tạo yêu cầu). Các ô chọn lấy dữ liệu từ `GET /towers`, `GET /manager/apartments` và `GET /manager/apartments/{id}/residencies?current=true` (danh sách Người báo gồm cả chủ hộ lẫn thành viên). Ảnh gửi kèm ngay trong request này, không có bước tải ảnh riêng.
+Màn hình: **Sự cố – BQL tạo thay cư dân** (nút Tạo yêu cầu). Chỉ chọn căn hộ (danh sách từ `GET /manager/apartments`) và người báo từ `GET /manager/apartments/{id}/residencies?current=true` (gồm cả chủ hộ lẫn thành viên); không cần chọn tòa riêng. Ảnh gửi kèm ngay trong request này, không có bước tải ảnh riêng.
 
 Request: `Content-Type: multipart/form-data`. Các phần (part):
 
@@ -1245,7 +1245,6 @@ Request: `Content-Type: multipart/form-data`. Các phần (part):
 | `reportedBy` | text | Một trong hai với `reporterName` | `res_02` |
 | `reporterName` | text | Một trong hai với `reportedBy` | `Nguyễn Văn Khách` |
 | `channel` | text | Có | `PHONE` |
-| `towerId` | text | Không | `twr_a` |
 | `area` | text | Có | `Hành lang tầng 12` |
 | `title` | text | Có | `Đèn hành lang tầng 12 hỏng` |
 | `description` | text | Không | `Đèn hành lang gần căn A-1201 không sáng từ vài ngày nay.` |
@@ -1255,7 +1254,7 @@ Response 201: dạng `IncidentDetail` (10.3) với `status` ACKNOWLEDGED, `timel
 
 Quy tắc:
 
-- `channel` là PHONE | IN\_PERSON | OTHER. `reportedBy` phải là người đang cư trú tại căn. `reporterName` dùng khi chọn "Khác (nhập tên)". `towerId` mặc định là tòa của căn (xem mục 14, điểm 1).
+- `channel` là PHONE | IN\_PERSON | OTHER. `reportedBy` phải là người đang cư trú tại căn. `reporterName` dùng khi chọn "Khác (nhập tên)". Tòa được xác định từ căn hộ nếu cần hiển thị.
 - Ảnh: chỉ nhận image/jpeg, image/png, image/webp, tối đa 5 ảnh mỗi yêu cầu, mỗi ảnh tối đa 5 MB (đề xuất). Backend kiểm tra loại file thật bằng nội dung file, không chỉ dựa vào `Content-Type` hay đuôi file.
 - Backend lưu ảnh lên MinIO với tên đối tượng ngẫu nhiên dạng `incidents/{yyyy}/{MM}/{uuid}.{ext}`, rồi lưu URL vào cột `storage_key` của `incident_attachments`. Nếu giao dịch DB lỗi thì backend xóa các ảnh vừa tải lên.
 - Lỗi: 404 APARTMENT\_NOT\_FOUND, 422 REPORTER\_REQUIRED, 422 REPORTER\_NOT\_IN\_APARTMENT, 422 FILE\_TYPE\_NOT\_ALLOWED, 422 FILE\_TOO\_LARGE, 422 TOO\_MANY\_FILES, 502 STORAGE\_ERROR.
@@ -1306,7 +1305,9 @@ Request body:
 }
 ```
 
-Response 200: dạng `IncidentDetail`, `status` CLOSED, `resultNote` có giá trị. Cư dân thấy `resultNote` ở màn chi tiết của họ. Lỗi: 409 INVALID\_STATUS\_TRANSITION, 422 COMPLETE\_NOTE\_REQUIRED.
+Response 200: dạng `IncidentDetail`, `status` CLOSED; `resultNote` phản ánh ghi chú đã lưu hoặc null. Cư dân thấy `resultNote` ở màn chi tiết của họ.
+
+Quy tắc: `note` không bắt buộc; có thể bỏ qua hoặc gửi null. Lỗi: 409 INVALID\_STATUS\_TRANSITION.
 
 ### 10.9 POST /manager/incidents/{id}/revert
 
@@ -1601,7 +1602,7 @@ Quy tắc:
 
 - Cư dân không thấy tên nhân viên BQL thực hiện (`actorName`), chỉ thấy người phụ trách.
 - `canCancel` là true khi `status` là NEW (hiện khối Hủy yêu cầu, ghi chú "Chỉ hủy được khi Ban quản lý chưa tiếp nhận").
-- `cancellation` có khi CANCELLED, dạng `{ "reason": "DUPLICATE", "cancelledBy": "MANAGER" }`. Cư dân thấy lý do hủy.
+- `cancellation` có khi CANCELLED. BQL hủy: `reason` có giá trị và `cancelledBy` là MANAGER; cư dân tự hủy: `reason` là null và `cancelledBy` là RESIDENT.
 - Lỗi: 404 INCIDENT\_NOT\_FOUND (không thuộc căn mình).
 
 ### 11.8 POST /resident/incidents
@@ -1625,7 +1626,7 @@ Quy tắc: `title`, `area`, `description` bắt buộc (mockup đánh dấu \*).
 
 Màn hình: **Cư dân – Chi tiết yêu cầu (Mới, có Hủy)**, nút Hủy yêu cầu. Không có body.
 
-Response 200: dạng chi tiết ở 11.7 với `status` CANCELLED, `canCancel` false.
+Response 200: dạng chi tiết ở 11.7 với `status` CANCELLED, `canCancel` false, `cancellation` là `{ "reason": null, "cancelledBy": "RESIDENT" }`.
 
 Quy tắc: chỉ khi NEW và thuộc căn của mình. Lỗi: 404 INCIDENT\_NOT\_FOUND, 409 INVALID\_STATUS\_TRANSITION (BQL đã tiếp nhận).
 
@@ -1706,16 +1707,16 @@ Header chung của mọi màn BQL và cư dân (tên người đăng nhập, "Ba
 
 ## 14. Điểm tôi suy ra hoặc đề xuất thêm, cần bạn duyệt
 
-1. **Tòa của sự cố.** Form "BQL tạo thay cư dân" có ô Tòa (A, B, C) riêng với ô căn hộ, và danh sách hiện "Tòa B · Sảnh". Tài liệu controller không có `towerId` trong body, nên tôi thêm `towerId` không bắt buộc (mặc định là tòa của căn). Cần xem bảng `incidents` trong schema có cột tòa chưa. Nếu không, bỏ ô Tòa hoặc lấy tòa từ căn.
-2. **Hình thức thanh toán.** Mockup có ô "Hình thức: Tiền mặt" ở form ghi nhận thanh toán, nhưng tài liệu controller chỉ có `paidOn` và `note`. Tôi không đưa `method` vào request. Nếu muốn giữ ô này thì cần thêm cột và field.
-3. **Cư dân tự hủy yêu cầu.** Mockup không hỏi lý do khi cư dân hủy, còn BQL hủy phải có `cancelReason`. Tôi để cư dân hủy không có body, `cancellation.cancelledBy` là RESIDENT và `reason` là null. Nếu cột `cancel_reason` bắt buộc thì đặt mặc định MISTAKE.
+1. **Tòa của sự cố.** Bảng `incidents` không có cột `towerId`, nên form "BQL tạo thay cư dân" chỉ cần chọn căn hộ, không cần ô Tòa riêng. Giao diện hiển thị căn hộ đã chọn; thông tin tòa, nếu cần, được suy ra từ căn hộ. Request không có `towerId`.
+2. **Hình thức thanh toán.** UI hiển thị cố định "Tiền mặt". API không nhận `method` trong request và không lưu hình thức thanh toán; request chỉ có `paidOn` và `note`.
+3. **Cư dân tự hủy yêu cầu.** Đã chốt: cư dân hủy không có body; `cancellation.cancelledBy` là RESIDENT và `reason` là null. BQL hủy vẫn bắt buộc có `cancelReason`.
 4. **Chi tiết hóa đơn cho cư dân (11.5).** Hai màn cư dân có nút "Xem chi tiết" hóa đơn nhưng danh sách controller không có endpoint này. Tôi đề xuất thêm `GET /resident/invoices/{id}`.
 5. **Đổi người phụ trách (10.7).** Chỉ cập nhật người phụ trách hiện tại, không ghi thêm dòng vào Tiến độ để tránh hai dòng "Đang xử lý". Nếu muốn lưu vết thì cần loại event riêng.
-6. **Ghi chú kết quả bắt buộc (10.8).** Tôi cho `note` của Hoàn thành là bắt buộc vì cư dân xem được kết quả xử lý. Nếu muốn không bắt buộc thì bỏ lỗi COMPLETE\_NOTE\_REQUIRED.
+6. **Ghi chú kết quả (10.8).** Đã chốt: `note` không bắt buộc; nếu không có ghi chú thì `resultNote` trả về null.
 7. **Hai dòng Tiến độ khi BQL tạo hộ (10.4).** Sự cố vào thẳng ACKNOWLEDGED nhưng vẫn ghi hai event (NEW rồi ACKNOWLEDGED) để Tiến độ có dòng "Đã gửi".
 8. **Vá mục cũ cho khớp mockup.** Mục 8.2 thêm `apartmentStatus` (mockup hiện nhãn "Đang sửa chữa" ở dòng căn). Mục 6.2 thêm `account.createdAt` (ô "Ngày cấp" tài khoản) và `currentResidency.housemates` (dòng "cùng ở: ...").
 9. **Dòng trạng thái cũ trong ghi chú của tôi.** Trước đây tôi ghi nhận sự cố có thêm trạng thái chờ cư dân xác nhận. Mockup và tài liệu controller mới (27/11) đã bỏ trạng thái đó, nên bản thiết kế này theo luồng NEW, ACKNOWLEDGED, IN\_PROGRESS, CLOSED hoặc CANCELLED.
-10. **Chưa có file schema.** Bạn chưa đính kèm `emerald_schema.sql` nên tên cột (ví dụ cột lưu lý do hủy hóa đơn, `incident_events`) tôi suy từ tài liệu controller. Cần đối chiếu lại khi có file.
+10. **Đã đối chiếu với `emerald_schema.sql`.** `invoices` dùng `void_reason`, `void_note`, `voided_at` và lưu thanh toán trên chính hóa đơn; không có bảng `payments`. `incidents.cancel_reason` và `incident_events.note` đều cho phép null, nên cư dân có thể hủy không kèm lý do và ghi chú kết quả xử lý có thể để trống.
 11. **Ảnh sự cố lưu qua backend (thay cho 3.4, 3.5 cũ).** Đã bỏ hai endpoint cấp URL tải lên và URL xem có thời hạn. Ảnh gửi cùng request tạo sự cố (multipart), backend lưu lên MinIO và trả `url` để frontend hiển thị trực tiếp. Hệ quả cần biết:
     - Frontend lấy ảnh thẳng từ `url` nên bucket phải cho đọc công khai (hoặc đặt sau một proxy/CDN). Quy tắc cũ "chỉ BQL hoặc cư dân thuộc căn mới xem được ảnh" không còn được kiểm tra ở backend. Tên đối tượng là UUID ngẫu nhiên nên khó đoán, nhưng ai có link thì xem được. Nếu ảnh sự cố cần riêng tư thì phải quay lại URL có thời hạn.
     - Backend cần cấu hình giới hạn multipart đủ cho 5 ảnh mỗi request (tổng khoảng 25 MB).

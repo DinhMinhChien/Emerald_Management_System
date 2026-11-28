@@ -6,24 +6,34 @@ import org.example.emeraldmanagementsystem.common.enums.FeeType;
 import org.example.emeraldmanagementsystem.common.enums.VehicleType;
 import org.example.emeraldmanagementsystem.dto.response.BillingAvailableMonthsResponse;
 import org.example.emeraldmanagementsystem.dto.response.BillingPeriodPreviewResponse;
+import org.example.emeraldmanagementsystem.dto.request.BillingPeriodIssueRequest;
+import org.example.emeraldmanagementsystem.dto.response.BillingPeriodIssueResponse;
 import org.example.emeraldmanagementsystem.entity.Apartment;
 import org.example.emeraldmanagementsystem.entity.BillingPeriod;
 import org.example.emeraldmanagementsystem.entity.FeeTariff;
+import org.example.emeraldmanagementsystem.entity.Invoice;
+import org.example.emeraldmanagementsystem.entity.InvoiceItem;
 import org.example.emeraldmanagementsystem.entity.Tower;
+import org.example.emeraldmanagementsystem.common.enums.InvoiceStatus;
 import org.example.emeraldmanagementsystem.exception.BusinessException;
 import org.example.emeraldmanagementsystem.repository.ApartmentRepository;
 import org.example.emeraldmanagementsystem.repository.BillingPeriodRepository;
 import org.example.emeraldmanagementsystem.repository.FeeTariffRepository;
+import org.example.emeraldmanagementsystem.repository.InvoiceItemRepository;
+import org.example.emeraldmanagementsystem.repository.InvoiceRepository;
 import org.example.emeraldmanagementsystem.repository.ResidencyRepository;
 import org.example.emeraldmanagementsystem.repository.TowerRepository;
+import org.example.emeraldmanagementsystem.repository.UserRepository;
 import org.example.emeraldmanagementsystem.repository.VehicleRepository;
 import org.example.emeraldmanagementsystem.service.BillingPeriodService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -46,6 +56,9 @@ public class BillingPeriodServiceImplement implements BillingPeriodService {
     private final TowerRepository towerRepository;
     private final VehicleRepository vehicleRepository;
     private final FeeTariffRepository feeTariffRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -213,6 +226,183 @@ public class BillingPeriodServiceImplement implements BillingPeriodService {
                         page,
                         size
                 )
+        );
+    }
+
+    @Override
+    @Transactional
+    public BillingPeriodIssueResponse issue(BillingPeriodIssueRequest request) {
+        if (request == null
+                || request.year() == null
+                || request.month() == null
+                || request.dueDate() == null
+                || request.year() < 1
+                || request.year() > 9999
+                || request.month() < 1
+                || request.month() > 12) {
+            throw new BusinessException(400, "VALIDATION_ERROR");
+        }
+        if (request.dueDate().isBefore(LocalDate.now())) {
+            throw new BusinessException(422, "INVALID_DUE_DATE");
+        }
+        if (billingPeriodRepository.existsByDeletedFalseAndYearAndMonth(
+                request.year(),
+                request.month()
+        )) {
+            throw new BusinessException(409, "PERIOD_ALREADY_EXISTS");
+        }
+
+        LocalDate tariffDate = LocalDate.now();
+        Map<FeeType, List<FeeTariff>> tariffsByType = new EnumMap<>(FeeType.class);
+        for (FeeType feeType : FeeType.values()) {
+            tariffsByType.put(
+                    feeType,
+                    feeTariffRepository.findCurrentByFeeType(feeType, tariffDate)
+            );
+        }
+
+        List<Apartment> apartments = apartmentRepository.findAllByDeletedFalseOrderByCodeAsc();
+        List<String> apartmentIds = apartments.stream().map(Apartment::getId).toList();
+        Map<String, ResidencyRepository.ActiveHeadProjection> headsByApartmentId = apartmentIds.isEmpty()
+                ? Map.of()
+                : residencyRepository.findActiveHeadDetailsByApartmentIds(apartmentIds).stream()
+                        .collect(Collectors.toMap(
+                                ResidencyRepository.ActiveHeadProjection::getApartmentId,
+                                head -> head
+                        ));
+        Map<String, Map<VehicleType, Long>> vehiclesByApartmentId = new java.util.HashMap<>();
+        if (!apartmentIds.isEmpty()) {
+            for (VehicleRepository.ActiveVehicleCountProjection vehicleCount
+                    : vehicleRepository.findActiveVehicleCountsByApartmentIds(apartmentIds)) {
+                vehiclesByApartmentId
+                        .computeIfAbsent(vehicleCount.getApartmentId(), ignored -> new EnumMap<>(VehicleType.class))
+                        .put(vehicleCount.getType(), vehicleCount.getVehicleCount());
+            }
+        }
+
+        FeeTariff managementTariff = firstTariffWithAmount(tariffsByType.get(FeeType.MANAGEMENT));
+        if (managementTariff == null) {
+            throw new BusinessException(422, "TARIFF_NOT_CONFIGURED");
+        }
+
+        long skippedVacantCount = 0;
+        long issuedInvoiceCount = 0;
+        long totalAmount = 0;
+        java.util.Map<Invoice, List<InvoiceItem>> invoiceItemsByInvoice = new java.util.LinkedHashMap<>();
+
+        for (Apartment apartment : apartments) {
+            if (apartment.getStatus() == ApartmentStatus.VACANT) {
+                skippedVacantCount++;
+                continue;
+            }
+            ResidencyRepository.ActiveHeadProjection head = headsByApartmentId.get(apartment.getId());
+            if (head == null) {
+                continue;
+            }
+
+            FeeTariff serviceTariff = findServiceTariff(
+                    apartment.getAreaM2(),
+                    tariffsByType.get(FeeType.SERVICE)
+            );
+            if (serviceTariff == null
+                    || serviceTariff.getAmount() == null
+                    || serviceTariff.getTierName() == null) {
+                throw new BusinessException(422, "TARIFF_NOT_CONFIGURED");
+            }
+
+            Map<VehicleType, Long> vehicleCounts = vehiclesByApartmentId.getOrDefault(
+                    apartment.getId(),
+                    Map.of()
+            );
+            List<BillingPeriodPreviewResponse.InvoiceLineItem> previewLines = buildLineItems(
+                    apartment,
+                    vehicleCounts,
+                    tariffsByType
+            );
+            long invoiceTotal = previewLines.stream()
+                    .mapToLong(BillingPeriodPreviewResponse.InvoiceLineItem::amount)
+                    .reduce(0L, Math::addExact);
+
+            Invoice invoice = new Invoice();
+            invoice.setApartmentId(apartment.getId());
+            invoice.setRecipientResidentId(head.getResidentId());
+            invoice.setRecipientName(head.getFullName());
+            invoice.setAreaM2(apartment.getAreaM2());
+            invoice.setServiceTierName(serviceTariff.getTierName());
+            invoice.setDueDate(request.dueDate());
+            invoice.setStatus(InvoiceStatus.PENDING);
+            invoice.setTotalAmount(invoiceTotal);
+            List<InvoiceItem> invoiceItems = new ArrayList<>();
+
+            for (BillingPeriodPreviewResponse.InvoiceLineItem previewLine : previewLines) {
+                FeeTariff tariff = switch (previewLine.feeType()) {
+                    case MANAGEMENT -> managementTariff;
+                    case SERVICE -> serviceTariff;
+                    case PARKING_MOTORBIKE ->
+                            firstTariffWithAmount(tariffsByType.get(FeeType.PARKING_MOTORBIKE));
+                    case PARKING_CAR ->
+                            firstTariffWithAmount(tariffsByType.get(FeeType.PARKING_CAR));
+                };
+                if (tariff == null) {
+                    throw new BusinessException(422, "TARIFF_NOT_CONFIGURED");
+                }
+
+                InvoiceItem item = new InvoiceItem();
+                item.setTariffId(tariff.getId());
+                item.setFeeType(previewLine.feeType());
+                item.setDescription(previewLine.description());
+                item.setQuantity(previewLine.quantity());
+                item.setUnitAmount(previewLine.unitAmount());
+                item.setAmount(previewLine.amount());
+                invoiceItems.add(item);
+            }
+            invoiceItemsByInvoice.put(invoice, invoiceItems);
+
+            issuedInvoiceCount++;
+            totalAmount = Math.addExact(totalAmount, invoiceTotal);
+        }
+
+        BillingPeriod period = new BillingPeriod();
+        period.setYear(request.year());
+        period.setMonth(request.month());
+        period.setDueDate(request.dueDate());
+        BillingPeriod savedPeriod;
+        try {
+            savedPeriod = billingPeriodRepository.saveAndFlush(period);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(409, "PERIOD_ALREADY_EXISTS");
+        }
+
+        for (java.util.Map.Entry<Invoice, List<InvoiceItem>> entry : invoiceItemsByInvoice.entrySet()) {
+            Invoice invoice = entry.getKey();
+            invoice.setPeriodId(savedPeriod.getId());
+            Invoice savedInvoice = invoiceRepository.saveAndFlush(invoice);
+
+            for (InvoiceItem item : entry.getValue()) {
+                item.setInvoiceId(savedInvoice.getId());
+            }
+            invoiceItemRepository.saveAllAndFlush(entry.getValue());
+        }
+
+        OffsetDateTime issuedAt = OffsetDateTime.now();
+        String issuerUsername = org.example.emeraldmanagementsystem.utils.SecurityUtils.getUsername();
+        String issuedBy = issuerUsername == null
+                ? "SYSTEM"
+                : userRepository.findUserByUsernameAndDeletedFalse(issuerUsername)
+                        .map(org.example.emeraldmanagementsystem.entity.User::getFullName)
+                        .filter(name -> name != null && !name.isBlank())
+                        .orElse(issuerUsername);
+
+        return new BillingPeriodIssueResponse(
+                savedPeriod.getId(),
+                savedPeriod.getYear(),
+                savedPeriod.getMonth(),
+                savedPeriod.getDueDate(),
+                issuedInvoiceCount,
+                skippedVacantCount,
+                totalAmount,
+                issuedAt,
+                issuedBy
         );
     }
 

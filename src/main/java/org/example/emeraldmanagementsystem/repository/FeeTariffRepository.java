@@ -22,4 +22,18 @@ public interface FeeTariffRepository extends JpaRepository<FeeTariff, String> {
             @Param("feeType") FeeType feeType,
             @Param("today") LocalDate today
     );
+
+    @Query("""
+            select tariff
+            from FeeTariff tariff
+            where tariff.deleted = false
+              and tariff.effectiveFrom <= :today
+              and (tariff.effectiveTo is null or tariff.effectiveTo >= :today)
+            order by tariff.feeType asc,
+                     tariff.minAreaM2 asc,
+                     tariff.effectiveFrom desc
+            """)
+    List<FeeTariff> findAllCurrent(
+            @Param("today") LocalDate today
+    );
 }

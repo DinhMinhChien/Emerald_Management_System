@@ -19,3 +19,9 @@ keycloak:
     secret: 'KQb0Wv7MWo5HddFlMu7qCizuEkq90nxh'
 server:
   port: 3333
+
+minio:
+  url: http://localhost:9002
+  access-key: admin
+  secret-key: password123
+  bucket-name: emerald

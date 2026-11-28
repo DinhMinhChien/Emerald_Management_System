@@ -44,7 +44,15 @@ class ApartmentRepositorySearchTest {
     @Autowired
     private BillingPeriodRepository billingPeriodRepository;
     @Autowired
+    private InvoiceItemRepository invoiceItemRepository;
+    @Autowired
     private ResidentRepository residentRepository;
+    @Autowired
+    private IncidentRepository incidentRepository;
+    @Autowired
+    private IncidentEventRepository incidentEventRepository;
+    @Autowired
+    private IncidentAttachmentRepository incidentAttachmentRepository;
 
     @Test
     void executesApartmentSearchWithAndWithoutOptionalFilters() {
@@ -72,6 +80,41 @@ class ApartmentRepositorySearchTest {
                 InvoiceStatus.PENDING,
                 LocalDate.now()
         ));
+        assertNotNull(invoiceRepository.searchInvoices(
+                "nonexistent-period",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                LocalDate.now(),
+                PageRequest.of(0, 20)
+        ));
+        assertNotNull(invoiceRepository.getInvoiceSummary(
+                "nonexistent-period",
+                null,
+                null,
+                null,
+                LocalDate.now()
+        ));
+        assertNotNull(invoiceRepository.findCurrentApartmentInvoices(
+                "nonexistent-apartment",
+                "nonexistent-period",
+                PageRequest.of(0, 1)
+        ));
+        assertNotNull(invoiceRepository.findRecentInvoicesByApartmentId(
+                "nonexistent-apartment",
+                PageRequest.of(0, 3)
+        ));
+        assertNotNull(invoiceRepository.findOutstandingInvoicesByApartmentId("nonexistent-apartment"));
+        assertNotNull(invoiceRepository.findResidentInvoicesByApartmentId(
+                "nonexistent-apartment",
+                PageRequest.of(0, 20)
+        ));
+        assertEquals(Optional.empty(), invoiceRepository.findByIdAndDeletedFalse("nonexistent-invoice"));
+        assertNotNull(invoiceItemRepository.findByInvoiceIdAndDeletedFalseOrderByCreatedAtAscIdAsc("nonexistent-invoice"));
+        assertEquals(Optional.empty(), billingPeriodRepository.findByIdAndDeletedFalse("nonexistent-period"));
         assertEquals(
                 List.of(),
                 residencyRepository.findResidencyDetailsByApartmentId("nonexistent-apartment", null)
@@ -108,9 +151,29 @@ class ApartmentRepositorySearchTest {
         ));
         assertNotNull(vehicleQuotaRepository.findAllByDeletedFalseOrderByVehicleTypeAsc());
         assertNotNull(feeTariffRepository.findCurrentByFeeType(FeeType.PARKING_MOTORBIKE, LocalDate.now()));
+        assertNotNull(feeTariffRepository.findAllCurrent(LocalDate.now()));
         assertNotNull(billingPeriodRepository.findAllByDeletedFalseOrderByYearAscMonthAsc());
         assertNotNull(billingPeriodRepository.findFirstByDeletedFalseOrderByYearDescMonthDesc());
         assertNotNull(billingPeriodRepository.existsByDeletedFalseAndYearAndMonth(1900, 1));
+        assertNotNull(incidentRepository.searchIncidents(
+                null,
+                "nonexistent-tower",
+                null,
+                null,
+                PageRequest.of(0, 20)
+        ));
+        assertNotNull(incidentRepository.getIncidentSummary("nonexistent-tower"));
+        assertNotNull(incidentRepository.findOpenIncidentsByApartmentId(
+                "nonexistent-apartment",
+                PageRequest.of(0, 5)
+        ));
+        assertNotNull(incidentRepository.findResidentIncidentsByApartmentId(
+                "nonexistent-apartment",
+                null,
+                PageRequest.of(0, 20)
+        ));
+        assertNotNull(incidentEventRepository.findByIncidentIdAndDeletedFalseOrderByCreatedAtAscIdAsc("nonexistent-incident"));
+        assertNotNull(incidentAttachmentRepository.findByIncidentIdAndDeletedFalseOrderByCreatedAtAscIdAsc("nonexistent-incident"));
         assertNotNull(residentRepository.searchResidents(
                 null,
                 null,

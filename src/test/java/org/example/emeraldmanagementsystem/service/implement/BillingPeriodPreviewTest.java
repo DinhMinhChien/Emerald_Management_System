@@ -3,16 +3,23 @@ package org.example.emeraldmanagementsystem.service.implement;
 import org.example.emeraldmanagementsystem.common.enums.ApartmentStatus;
 import org.example.emeraldmanagementsystem.common.enums.FeeType;
 import org.example.emeraldmanagementsystem.common.enums.VehicleType;
+import org.example.emeraldmanagementsystem.dto.request.BillingPeriodIssueRequest;
 import org.example.emeraldmanagementsystem.dto.response.BillingPeriodPreviewResponse;
+import org.example.emeraldmanagementsystem.dto.response.BillingPeriodIssueResponse;
 import org.example.emeraldmanagementsystem.entity.Apartment;
 import org.example.emeraldmanagementsystem.entity.FeeTariff;
+import org.example.emeraldmanagementsystem.entity.BillingPeriod;
+import org.example.emeraldmanagementsystem.entity.Invoice;
 import org.example.emeraldmanagementsystem.entity.Tower;
 import org.example.emeraldmanagementsystem.exception.BusinessException;
 import org.example.emeraldmanagementsystem.repository.ApartmentRepository;
 import org.example.emeraldmanagementsystem.repository.BillingPeriodRepository;
 import org.example.emeraldmanagementsystem.repository.FeeTariffRepository;
+import org.example.emeraldmanagementsystem.repository.InvoiceItemRepository;
+import org.example.emeraldmanagementsystem.repository.InvoiceRepository;
 import org.example.emeraldmanagementsystem.repository.ResidencyRepository;
 import org.example.emeraldmanagementsystem.repository.TowerRepository;
+import org.example.emeraldmanagementsystem.repository.UserRepository;
 import org.example.emeraldmanagementsystem.repository.VehicleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +51,12 @@ class BillingPeriodPreviewTest {
     private VehicleRepository vehicleRepository;
     @Mock
     private FeeTariffRepository feeTariffRepository;
+    @Mock
+    private InvoiceRepository invoiceRepository;
+    @Mock
+    private InvoiceItemRepository invoiceItemRepository;
+    @Mock
+    private UserRepository userRepository;
     @InjectMocks
     private BillingPeriodServiceImplement billingPeriodService;
 
@@ -131,6 +144,62 @@ class BillingPeriodPreviewTest {
 
         assertEquals(400, exception.getErrorCode());
         assertEquals("VALIDATION_ERROR", exception.getMessage());
+    }
+
+    @Test
+    void issuesInvoicesForEligibleApartments() {
+        Apartment occupied = apartment("apt-1", "A-1205", ApartmentStatus.OCCUPIED, "tower-1", "72.50");
+        Apartment vacant = apartment("apt-2", "B-0101", ApartmentStatus.VACANT, "tower-1", "50");
+        when(billingPeriodRepository.existsByDeletedFalseAndYearAndMonth(2026, 3)).thenReturn(false);
+        when(apartmentRepository.findAllByDeletedFalseOrderByCodeAsc())
+                .thenReturn(List.of(occupied, vacant));
+        when(residencyRepository.findActiveHeadDetailsByApartmentIds(any()))
+                .thenReturn(List.of(head("apt-1", "Resident One")));
+        when(vehicleRepository.findActiveVehicleCountsByApartmentIds(any())).thenReturn(List.of(
+                vehicleCount("apt-1", VehicleType.MOTORBIKE, 2)
+        ));
+        when(feeTariffRepository.findCurrentByFeeType(any(), any())).thenAnswer(invocation ->
+                tariffs().get(invocation.getArgument(0))
+        );
+        when(billingPeriodRepository.saveAndFlush(any(BillingPeriod.class))).thenAnswer(invocation -> {
+            BillingPeriod period = invocation.getArgument(0);
+            period.setId("per-202603");
+            return period;
+        });
+        when(invoiceRepository.saveAndFlush(any(Invoice.class))).thenAnswer(invocation -> {
+            Invoice invoice = invocation.getArgument(0);
+            invoice.setId("inv-1");
+            return invoice;
+        });
+
+        BillingPeriodIssueResponse response = billingPeriodService.issue(
+                new BillingPeriodIssueRequest(
+                        2026,
+                        3,
+                        LocalDate.now().plusDays(10)
+                )
+        );
+
+        assertEquals("per-202603", response.periodId());
+        assertEquals(1, response.issuedInvoiceCount());
+        assertEquals(1, response.skippedVacantCount());
+        assertEquals(4_200, response.totalAmount());
+        assertEquals("SYSTEM", response.issuedBy());
+    }
+
+    @Test
+    void rejectsPastDueDate() {
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> billingPeriodService.issue(new BillingPeriodIssueRequest(
+                        2026,
+                        3,
+                        LocalDate.now().minusDays(1)
+                ))
+        );
+
+        assertEquals(422, exception.getErrorCode());
+        assertEquals("INVALID_DUE_DATE", exception.getMessage());
     }
 
     private Apartment apartment(

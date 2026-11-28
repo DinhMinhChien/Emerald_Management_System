@@ -24,6 +24,21 @@ public interface ResidencyRepository extends JpaRepository<Residency, String> {
     boolean existsByApartmentIdAndRoleAndEndDateIsNullAndDeletedFalse(String apartmentId, ResidencyRole role);
 
     @Query("""
+            select count(residency.id)
+            from Residency residency
+            join Resident resident on resident.id = residency.residentId
+            where residency.deleted = false
+              and residency.endDate is null
+              and resident.deleted = false
+              and resident.nationalId = :nationalId
+              and residency.apartmentId <> :apartmentId
+            """)
+    long countActiveOtherApartmentByNationalId(
+            @Param("nationalId") String nationalId,
+            @Param("apartmentId") String apartmentId
+    );
+
+    @Query("""
             select residency.apartmentId as apartmentId,
                    resident.id as residentId,
                    resident.fullName as fullName,
